@@ -1,0 +1,20 @@
+version: '3.9'
+services:
+  cinema-reservation-redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  cinema-reservation-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: cinema
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
