@@ -21,7 +21,7 @@ func NewCinemaHandler(cinemaService services.CinemaService) *CinemaHandler {
 func (h *CinemaHandler) CreateLayout(c *gin.Context) {
 	var req models.CreateCinemaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(c, utils.ErrInvalidInput)
+		utils.ErrorResponse(c, err)
 		return
 	}
 

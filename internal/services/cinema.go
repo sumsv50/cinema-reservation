@@ -2,14 +2,15 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
 	"cinema-reservation/internal/models"
 	"cinema-reservation/internal/repositories"
+	"cinema-reservation/internal/utils"
 
 	"github.com/gosimple/slug"
+	"github.com/sirupsen/logrus"
 )
 
 type cinemaService struct {
@@ -21,19 +22,17 @@ func NewCinemaService(cinemaRepo repositories.CinemaRepository) CinemaService {
 }
 
 func (s *cinemaService) CreateLayout(ctx context.Context, req *models.CreateCinemaRequest) (*models.Cinema, error) {
-	// Trim and validate name
+	// Trim name
 	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		return nil, errors.New("cinema name cannot be empty")
-	}
 
 	// Check if cinema name already exists
 	exists, err := s.cinemaRepo.ExistsByName(ctx, name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check cinema name existence: %w", err)
+		logrus.WithError(err).Error("failed to check cinema name existence")
+		return nil, utils.ErrInternalServer
 	}
 	if exists {
-		return nil, errors.New("cinema with this name already exists")
+		return nil, utils.ErrCinemaAlreadyExists
 	}
 
 	// Generate slug from name (since name is unique, slug will be unique too)
@@ -49,7 +48,8 @@ func (s *cinemaService) CreateLayout(ctx context.Context, req *models.CreateCine
 
 	err = s.cinemaRepo.Create(ctx, cinema)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create cinema: %w", err)
+		logrus.WithError(err).Error("failed to create cinema")
+		return nil, utils.ErrInternalServer
 	}
 
 	return cinema, nil

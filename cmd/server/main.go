@@ -12,8 +12,11 @@ import (
 	"cinema-reservation/internal/middleware"
 	"cinema-reservation/internal/repositories"
 	"cinema-reservation/internal/services"
+	validators "cinema-reservation/internal/validator"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -30,6 +33,14 @@ func main() {
 	redis, err := database.NewRedis(cfg.RedisURL)
 	if err != nil {
 		log.Fatal("Failed to connect to Redis:", err)
+	}
+
+	// Register custom validators
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		validators.RegisterCustomValidators(v)
+		log.Println("Custom validators registered successfully")
+	} else {
+		log.Println("Failed to register custom validators")
 	}
 
 	// Initialize repositories

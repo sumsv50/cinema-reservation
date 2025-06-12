@@ -16,7 +16,7 @@ type Cinema struct {
 }
 
 type CreateCinemaRequest struct {
-	Name        string `json:"name" binding:"required"`
+	Name        string `json:"name" binding:"required,trimmed_min=5"`
 	Rows        int    `json:"rows" binding:"required,min=1"`
 	Columns     int    `json:"columns" binding:"required,min=1"`
 	MinDistance int    `json:"min_distance" binding:"required,min=0"`
