@@ -13,4 +13,5 @@ var (
 	ErrInternalServer       = errors.New("internal server error")
 	ErrDatabaseConnection   = errors.New("database connection failed")
 	ErrRateLimitExceeded    = errors.New("rate limit exceeded")
+	ErrSeatsNotReserved     = errors.New("one or more seats are not currently reserved")
 )

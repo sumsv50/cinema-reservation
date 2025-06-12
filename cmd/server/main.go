@@ -103,6 +103,7 @@ func setupRouter(
 		reservations := v1.Group("/reservations")
 		{
 			reservations.POST("", reservationHandler.ReserveSeats)
+			reservations.DELETE("", reservationHandler.CancelSeats)
 		}
 	}
 

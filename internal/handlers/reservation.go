@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 
 	"cinema-reservation/internal/models"
@@ -22,15 +21,10 @@ func NewReservationHandler(reservationService services.ReservationService) *Rese
 func (h *ReservationHandler) ReserveSeats(c *gin.Context) {
 	var req models.ReservationRequest
 
-	// Debug: Print the raw request body
-	fmt.Printf("Content-Type: %s\n", c.GetHeader("Content-Type"))
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, err)
 		return
 	}
-
-	// Debug: Print the parsed request
-	fmt.Printf("Parsed request: %+v\n", req)
 
 	reservation, err := h.reservationService.ReserveSeats(c.Request.Context(), &req)
 	if err != nil {
@@ -38,5 +32,22 @@ func (h *ReservationHandler) ReserveSeats(c *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(c, http.StatusCreated, "Seats reserved successfully", reservation)
+	utils.SuccessResponse(c, http.StatusOK, "Seats reserved successfully", reservation)
+}
+
+func (h *ReservationHandler) CancelSeats(c *gin.Context) {
+	var req models.CancelRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, err)
+		return
+	}
+
+	err := h.reservationService.CancelSeats(c.Request.Context(), &req)
+	if err != nil {
+		utils.ErrorResponse(c, err)
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Seats canceled successfully", nil)
 }

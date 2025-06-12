@@ -16,6 +16,6 @@ type CinemaRepository interface {
 type ReservationRepository interface {
 	Create(ctx context.Context, reservation *models.Reservation) error
 	IsSeatsAvailable(ctx context.Context, cinemaID uint, seats []models.ReservedSeat) (bool, error)
-	LockSeats(ctx context.Context, cinemaID uint, seats []models.ReservedSeat) error
-	UnlockSeats(ctx context.Context, cinemaID uint, seats []models.ReservedSeat) error
+	FindReservedSeats(ctx context.Context, cinemaID uint, seats []models.Seat) ([]models.ReservedSeat, error)
+	CancelSeats(ctx context.Context, seatIDs []uint) error
 }

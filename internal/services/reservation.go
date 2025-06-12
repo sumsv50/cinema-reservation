@@ -36,6 +36,7 @@ func (s *reservationService) ReserveSeats(ctx context.Context, req *models.Reser
 	// Get cinema
 	cinema, err := s.cinemaRepo.GetBySlug(ctx, req.CinemaSlug)
 	if err != nil {
+		logrus.WithError(err).Error("failed to get cinema by slug")
 		return nil, utils.ErrInternalServer
 	}
 	if cinema == nil {
@@ -69,7 +70,7 @@ func (s *reservationService) ReserveSeats(ctx context.Context, req *models.Reser
 
 	err = s.reservationRepo.Create(ctx, reservation)
 	if err != nil {
-		cancelErr := s.rollbackSeatsRedis(ctx, cinema.ID, reservedSeats)
+		cancelErr := s.cancelSeatsRedis(ctx, cinema.ID, reservedSeats)
 		if cancelErr != nil {
 			logrus.WithFields(logrus.Fields{
 				"cinema_id":      cinema.ID,
@@ -87,6 +88,66 @@ func (s *reservationService) ReserveSeats(ctx context.Context, req *models.Reser
 	}
 
 	return reservation, nil
+}
+
+func (s *reservationService) CancelSeats(ctx context.Context, req *models.CancelRequest) error {
+	// Get cinema
+	cinema, err := s.cinemaRepo.GetBySlug(ctx, req.CinemaSlug)
+	if err != nil {
+		logrus.WithError(err).Error("failed to get cinema by slug")
+		return utils.ErrInternalServer
+	}
+	if cinema == nil {
+		return utils.ErrCinemaNotFound
+	}
+
+	var (
+		seats           []models.Seat
+		seatIDsToCancel []uint
+	)
+	for _, seat := range req.Seats {
+		if seat.Row < 0 || seat.Row >= cinema.Rows || seat.Column < 0 || seat.Column >= cinema.Columns {
+			return utils.ErrInvalidSeatPosition
+		}
+		seats = append(seats, models.Seat{
+			Row:    seat.Row,
+			Column: seat.Column,
+		})
+	}
+
+	reservedSeats, err := s.reservationRepo.FindReservedSeats(ctx, cinema.ID, seats)
+	if err != nil {
+		logrus.WithError(err).Error("failed to find reserved seats")
+		return utils.ErrInternalServer
+	}
+
+	if len(reservedSeats) != len(req.Seats) {
+		logrus.WithError(err).Error("not all seats are reserved")
+		return utils.ErrSeatsNotReserved
+	}
+
+	for _, seat := range reservedSeats {
+		seatIDsToCancel = append(seatIDsToCancel, seat.ID)
+	}
+	err = s.reservationRepo.CancelSeats(ctx, seatIDsToCancel)
+	if err != nil {
+		logrus.WithError(err).Error("failed to cancel seats")
+		return utils.ErrInternalServer
+	}
+
+	cancelErr := s.cancelSeatsRedis(ctx, cinema.ID, reservedSeats)
+	if cancelErr != nil {
+		logrus.WithFields(logrus.Fields{
+			"cinema_id":      cinema.ID,
+			"reserved_seats": models.ReservedSeats(reservedSeats).String(),
+			"cancel_error":   cancelErr.Error(),
+			"operation":      "seat_reservation_cancel",
+		}).Error("CRITICAL: Failed to cancel reserved seats on Redis - manual intervention required")
+	}
+
+	// TODO: Add retry mechanism and send notification to admin if totally failed
+
+	return nil
 }
 
 func (s *reservationService) reserveSeatsRedis(ctx context.Context, cinemaID uint, seats []models.ReservedSeat, minDist int) error {
@@ -123,7 +184,7 @@ func (s *reservationService) reserveSeatsRedis(ctx context.Context, cinemaID uin
 	return nil
 }
 
-func (s *reservationService) rollbackSeatsRedis(ctx context.Context, cinemaID uint, seats []models.ReservedSeat) error {
+func (s *reservationService) cancelSeatsRedis(ctx context.Context, cinemaID uint, seats []models.ReservedSeat) error {
 	script, err := scriptloader.LoadCancelScript()
 	if err != nil {
 		return fmt.Errorf("load script failed: %w", err)

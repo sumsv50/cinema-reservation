@@ -31,6 +31,11 @@ var errorMappings = map[error]ErrorMapping{
 	ErrSeatsNotAvailable:    {http.StatusConflict, "Selected seats are not available", "SEATS_NOT_AVAILABLE"},
 	ErrInvalidSeatPosition:  {http.StatusBadRequest, "Invalid seat position", "INVALID_SEAT_POSITION"},
 	ErrMinDistanceViolation: {http.StatusBadRequest, "Seat selection violates minimum distance requirement", "MIN_DISTANCE_VIOLATION"},
+	ErrSeatsNotReserved: {
+		StatusCode: http.StatusBadRequest,
+		Message:    "All specified seats must be currently reserved to cancel",
+		Code:       "SEATS_NOT_RESERVED",
+	},
 
 	// General errors
 	ErrInvalidInput:       {http.StatusBadRequest, "Invalid input provided", "INVALID_INPUT"},

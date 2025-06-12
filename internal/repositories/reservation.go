@@ -3,7 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
-	"time"
+	"log"
 
 	"cinema-reservation/internal/models"
 
@@ -56,21 +56,55 @@ func (r *reservationRepository) IsSeatsAvailable(ctx context.Context, cinemaID u
 	return true, nil
 }
 
-func (r *reservationRepository) LockSeats(ctx context.Context, cinemaID uint, seats []models.ReservedSeat) error {
-	for _, seat := range seats {
-		key := fmt.Sprintf("seat_lock:%d:%d:%d", cinemaID, seat.Row, seat.Column)
-		err := r.redis.Set(ctx, key, "locked", 5*time.Minute).Err()
-		if err != nil {
-			return err
-		}
+func (r *reservationRepository) FindReservedSeats(ctx context.Context, cinemaID uint, seats []models.Seat) ([]models.ReservedSeat, error) {
+	if len(seats) == 0 {
+		return []models.ReservedSeat{}, nil
 	}
-	return nil
+
+	var reservedSeats []models.ReservedSeat
+
+	query := r.db.WithContext(ctx).Where("cinema_id = ?", cinemaID)
+
+	var orConditions []string
+	var args []interface{}
+
+	for _, seat := range seats {
+		orConditions = append(orConditions, `("row" = ? AND "column" = ?)`)
+		args = append(args, seat.Row, seat.Column)
+	}
+
+	if len(orConditions) > 0 {
+		whereClause := "(" + orConditions[0]
+		for i := 1; i < len(orConditions); i++ {
+			whereClause += " OR " + orConditions[i]
+		}
+		whereClause += ")"
+
+		query = query.Where(whereClause, args...)
+	}
+
+	err := query.Find(&reservedSeats).Error
+	if err != nil {
+		log.Printf("Error finding reserved seats: %v", err)
+		return nil, err
+	}
+
+	log.Printf("Found %d reserved seats out of %d requested", len(reservedSeats), len(seats))
+	return reservedSeats, nil
 }
 
-func (r *reservationRepository) UnlockSeats(ctx context.Context, cinemaID uint, seats []models.ReservedSeat) error {
-	for _, seat := range seats {
-		key := fmt.Sprintf("seat_lock:%d:%d:%d", cinemaID, seat.Row, seat.Column)
-		r.redis.Del(ctx, key)
+func (r *reservationRepository) CancelSeats(ctx context.Context, seatIDs []uint) error {
+	if len(seatIDs) == 0 {
+		return nil
 	}
-	return nil
+
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Soft delete all seats in one operation
+		result := tx.Delete(&models.ReservedSeat{}, seatIDs)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		return nil
+	})
 }
