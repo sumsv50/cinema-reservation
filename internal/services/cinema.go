@@ -3,22 +3,25 @@ package services
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"cinema-reservation/internal/models"
 	"cinema-reservation/internal/repositories"
 	"cinema-reservation/internal/utils"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/gosimple/slug"
 	"github.com/sirupsen/logrus"
 )
 
 type cinemaService struct {
 	cinemaRepo repositories.CinemaRepository
+	redis      *redis.Client
 }
 
-func NewCinemaService(cinemaRepo repositories.CinemaRepository) CinemaService {
-	return &cinemaService{cinemaRepo: cinemaRepo}
+func NewCinemaService(cinemaRepo repositories.CinemaRepository, redis *redis.Client) CinemaService {
+	return &cinemaService{cinemaRepo: cinemaRepo, redis: redis}
 }
 
 func (s *cinemaService) CreateLayout(ctx context.Context, req *models.CreateCinemaRequest) (*models.Cinema, error) {
@@ -55,39 +58,101 @@ func (s *cinemaService) CreateLayout(ctx context.Context, req *models.CreateCine
 	return cinema, nil
 }
 
-func (s *cinemaService) GetAvailableSeats(ctx context.Context, slug string) (*models.CinemaLayout, error) {
+func (s *cinemaService) GetAvailableSeats(ctx context.Context, slug string, groupSize int) ([][]models.Seat, error) {
+	// Get cinema
 	cinema, err := s.cinemaRepo.GetBySlug(ctx, slug)
 	if err != nil {
-		return nil, err
+		logrus.WithError(err).Error("failed to get cinema by slug")
+		return nil, utils.ErrInternalServer
+	}
+	if cinema == nil {
+		return nil, utils.ErrCinemaNotFound
 	}
 
-	reservedSeats, err := s.cinemaRepo.GetReservedSeats(ctx, cinema.ID)
+	reserved, err := s.GetRedisReservedSeats(ctx, cinema.ID)
 	if err != nil {
-		return nil, err
+		logrus.WithError(err).Error("failed to get reserved seats from redis")
+		return nil, utils.ErrInternalServer
 	}
 
-	// Create seat map
-	reservedMap := make(map[string]bool)
-	for _, seat := range reservedSeats {
-		key := fmt.Sprintf("%d-%d", seat.Row, seat.Column)
-		reservedMap[key] = true
+	heatmap := buildHeatmap(cinema.Rows, cinema.Columns, cinema.MinDistance, reserved)
+	available := FindSafeBlocks(heatmap, groupSize)
+
+	return available, nil
+}
+
+func (s *cinemaService) GetRedisReservedSeats(ctx context.Context, cinemaID uint) ([]string, error) {
+	key := fmt.Sprintf("cinema:%d:seats", cinemaID)
+
+	data, err := s.redis.HGetAll(ctx, key).Result()
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch reserved seats from redis hash: %w", err)
 	}
 
-	// Generate all seats
-	var seats []models.Seat
-	for row := 1; row <= cinema.Rows; row++ {
-		for col := 1; col <= cinema.Columns; col++ {
-			key := fmt.Sprintf("%d-%d", row, col)
-			seats = append(seats, models.Seat{
-				Row:      row,
-				Column:   col,
-				Reserved: reservedMap[key],
-			})
+	var reserved []string
+	for seat := range data {
+		reserved = append(reserved, seat)
+	}
+
+	return reserved, nil
+}
+
+func buildHeatmap(rows, cols, minDist int, reserved []string) [][]bool {
+	heat := make([][]bool, rows)
+	for i := range heat {
+		heat[i] = make([]bool, cols)
+	}
+
+	for _, seat := range reserved {
+		parts := strings.Split(seat, ":")
+		r, _ := strconv.Atoi(parts[0])
+		c, _ := strconv.Atoi(parts[1])
+
+		for dr := -minDist; dr <= minDist; dr++ {
+			for dc := -minDist; dc <= minDist; dc++ {
+				nr := r + dr
+				nc := c + dc
+				if nr >= 0 && nr < rows && nc >= 0 && nc < cols {
+					if abs(dr)+abs(dc) < minDist {
+						heat[nr][nc] = true // unsafe
+					}
+				}
+			}
+		}
+	}
+	return heat
+}
+
+func FindSafeBlocks(heat [][]bool, groupSize int) [][]models.Seat {
+	rows := len(heat)
+	cols := len(heat[0])
+	var results [][]models.Seat
+
+	for r := 0; r < rows; r++ {
+		for c := 0; c <= cols-groupSize; c++ {
+			valid := true
+			block := []models.Seat{}
+
+			for i := 0; i < groupSize; i++ {
+				if heat[r][c+i] {
+					valid = false
+					break
+				}
+				block = append(block, models.Seat{Row: r, Column: c + i})
+			}
+
+			if valid {
+				results = append(results, block)
+			}
 		}
 	}
 
-	return &models.CinemaLayout{
-		Cinema: *cinema,
-		Seats:  seats,
-	}, nil
+	return results
+}
+
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
 }

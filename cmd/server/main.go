@@ -48,7 +48,7 @@ func main() {
 	reservationRepo := repositories.NewReservationRepository(db, redis)
 
 	// Initialize services
-	cinemaService := services.NewCinemaService(cinemaRepo)
+	cinemaService := services.NewCinemaService(cinemaRepo, redis)
 	reservationService := services.NewReservationService(reservationRepo, cinemaRepo, redis)
 
 	// Initialize handlers

@@ -23,9 +23,8 @@ type CreateCinemaRequest struct {
 }
 
 type Seat struct {
-	Row      int  `json:"row"`
-	Column   int  `json:"column"`
-	Reserved bool `json:"reserved"`
+	Row    int `json:"row"`
+	Column int `json:"column"`
 }
 
 type CinemaLayout struct {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"cinema-reservation/internal/models"
 	"cinema-reservation/internal/services"
@@ -36,12 +37,17 @@ func (h *CinemaHandler) CreateLayout(c *gin.Context) {
 
 func (h *CinemaHandler) GetAvailableSeats(c *gin.Context) {
 	slug := c.Param("slug")
+	nStr := c.Query("number_of_seats")
+	numberOfSeats, err := strconv.Atoi(nStr)
+	if err != nil || numberOfSeats <= 0 {
+		numberOfSeats = 1
+	}
 
-	layout, err := h.cinemaService.GetAvailableSeats(c.Request.Context(), slug)
+	available, err := h.cinemaService.GetAvailableSeats(c.Request.Context(), slug, numberOfSeats)
 	if err != nil {
 		utils.ErrorResponse(c, err)
 		return
 	}
 
-	utils.SuccessResponse(c, http.StatusOK, "Seats retrieved successfully", layout)
+	utils.SuccessResponse(c, http.StatusOK, "Available seats retrieved successfully", available)
 }

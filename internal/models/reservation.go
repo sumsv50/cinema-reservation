@@ -29,8 +29,8 @@ type ReservedSeat struct {
 }
 
 type SeatRequest struct {
-	Row    int `json:"row" binding:"required,min=0"`
-	Column int `json:"column" binding:"required,min=0"`
+	Row    int `json:"row" binding:"min=0"`
+	Column int `json:"column" binding:"min=0"`
 }
 
 type ReservationRequest struct {
