@@ -97,6 +97,7 @@ func setupRouter(
 		{
 			cinemas.POST("", cinemaHandler.CreateLayout)
 			cinemas.GET("/:slug/seats", cinemaHandler.GetAvailableSeats)
+			cinemas.POST("/:slug/seats/check-availability", cinemaHandler.CheckAvailableSeats)
 		}
 
 		// Reservation routes

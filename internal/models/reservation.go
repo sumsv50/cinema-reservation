@@ -28,6 +28,17 @@ type ReservedSeat struct {
 	DeletedAt     gorm.DeletedAt `json:"-"` // Soft delete
 }
 
+type ReservedSeats []ReservedSeat
+
+func (seats ReservedSeats) String() string {
+	var seatStrings []string
+	for _, seat := range seats {
+		seatStrings = append(seatStrings, fmt.Sprintf("R%dC%d", seat.Row, seat.Column))
+	}
+
+	return strings.Join(seatStrings, ", ")
+}
+
 type SeatRequest struct {
 	Row    int `json:"row" binding:"min=0"`
 	Column int `json:"column" binding:"min=0"`
@@ -42,15 +53,4 @@ type ReservationRequest struct {
 type CancelRequest struct {
 	CinemaSlug string        `json:"cinema_slug" binding:"required"`
 	Seats      []SeatRequest `json:"seats" binding:"required,min=1,dive,required"`
-}
-
-type ReservedSeats []ReservedSeat
-
-func (seats ReservedSeats) String() string {
-	var seatStrings []string
-	for _, seat := range seats {
-		seatStrings = append(seatStrings, fmt.Sprintf("R%dC%d", seat.Row, seat.Column))
-	}
-
-	return strings.Join(seatStrings, ", ")
 }

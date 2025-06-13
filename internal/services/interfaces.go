@@ -9,6 +9,7 @@ import (
 type CinemaService interface {
 	CreateLayout(ctx context.Context, req *models.CreateCinemaRequest) (*models.Cinema, error)
 	GetAvailableSeats(ctx context.Context, slug string, groupSize int) ([][]models.Seat, error)
+	CheckAvailableSeats(ctx context.Context, slug string, req *models.CheckSeatsRequest) ([]models.Seat, error)
 }
 
 type ReservationService interface {

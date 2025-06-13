@@ -51,3 +51,20 @@ func (h *CinemaHandler) GetAvailableSeats(c *gin.Context) {
 
 	utils.SuccessResponse(c, http.StatusOK, "Available seats retrieved successfully", available)
 }
+
+func (h *CinemaHandler) CheckAvailableSeats(c *gin.Context) {
+	slug := c.Param("slug")
+	var req models.CheckSeatsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, err)
+		return
+	}
+
+	available, err := h.cinemaService.CheckAvailableSeats(c.Request.Context(), slug, &req)
+	if err != nil {
+		utils.ErrorResponse(c, err)
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Check seats successfully", available)
+}

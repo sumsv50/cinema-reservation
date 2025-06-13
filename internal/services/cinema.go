@@ -81,6 +81,43 @@ func (s *cinemaService) GetAvailableSeats(ctx context.Context, slug string, grou
 	return available, nil
 }
 
+func (s *cinemaService) CheckAvailableSeats(ctx context.Context, slug string, req *models.CheckSeatsRequest) ([]models.Seat, error) {
+	// Get cinema
+	cinema, err := s.cinemaRepo.GetBySlug(ctx, slug)
+	if err != nil {
+		logrus.WithError(err).Error("failed to get cinema by slug")
+		return nil, utils.ErrInternalServer
+	}
+	if cinema == nil {
+		return nil, utils.ErrCinemaNotFound
+	}
+
+	reserved, err := s.GetRedisReservedSeats(ctx, cinema.ID)
+	if err != nil {
+		logrus.WithError(err).Error("failed to get reserved seats from redis")
+		return nil, utils.ErrInternalServer
+	}
+
+	seats := req.Seats
+	heatmap := buildHeatmap(cinema.Rows, cinema.Columns, cinema.MinDistance, reserved)
+	var available []models.Seat
+	for _, seat := range seats {
+		if seat.Row < 0 || seat.Row >= cinema.Rows || seat.Column < 0 || seat.Column >= cinema.Columns {
+			continue
+		}
+
+		// If not marked as unsafe in heatmap
+		if !heatmap[seat.Row][seat.Column] {
+			available = append(available, models.Seat{
+				Row:    seat.Row,
+				Column: seat.Column,
+			})
+		}
+	}
+
+	return available, nil
+}
+
 func (s *cinemaService) GetRedisReservedSeats(ctx context.Context, cinemaID uint) ([]string, error) {
 	key := fmt.Sprintf("cinema:%d:seats", cinemaID)
 

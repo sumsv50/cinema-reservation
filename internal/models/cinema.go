@@ -15,19 +15,18 @@ type Cinema struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-type CreateCinemaRequest struct {
-	Name        string `json:"name" binding:"required,trimmed_min=5"`
-	Rows        int    `json:"rows" binding:"required,min=1"`
-	Columns     int    `json:"columns" binding:"required,min=1"`
-	MinDistance int    `json:"min_distance" binding:"required,min=0"`
-}
-
 type Seat struct {
 	Row    int `json:"row"`
 	Column int `json:"column"`
 }
 
-type CinemaLayout struct {
-	Cinema Cinema `json:"cinema"`
-	Seats  []Seat `json:"seats"`
+type CheckSeatsRequest struct {
+	Seats []SeatRequest `json:"seats" binding:"required,min=1,dive,required"`
+}
+
+type CreateCinemaRequest struct {
+	Name        string `json:"name" binding:"required,trimmed_min=5"`
+	Rows        int    `json:"rows" binding:"required,min=1"`
+	Columns     int    `json:"columns" binding:"required,min=1"`
+	MinDistance int    `json:"min_distance" binding:"required,min=0"`
 }
