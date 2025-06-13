@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"cinema-reservation/internal/models"
@@ -27,33 +26,6 @@ func (r *reservationRepository) Create(ctx context.Context, reservation *models.
 		}
 		return nil
 	})
-}
-
-func (r *reservationRepository) IsSeatsAvailable(ctx context.Context, cinemaID uint, seats []models.ReservedSeat) (bool, error) {
-	for _, seat := range seats {
-		// Check in database
-		var count int64
-		err := r.db.WithContext(ctx).Model(&models.ReservedSeat{}).
-			Where("cinema_id = ? AND row = ? AND column = ?", cinemaID, seat.Row, seat.Column).
-			Count(&count).Error
-		if err != nil {
-			return false, err
-		}
-		if count > 0 {
-			return false, nil
-		}
-
-		// Check in Redis (temporary locks)
-		key := fmt.Sprintf("seat_lock:%d:%d:%d", cinemaID, seat.Row, seat.Column)
-		exists, err := r.redis.Exists(ctx, key).Result()
-		if err != nil {
-			return false, err
-		}
-		if exists > 0 {
-			return false, nil
-		}
-	}
-	return true, nil
 }
 
 func (r *reservationRepository) FindReservedSeats(ctx context.Context, cinemaID uint, seats []models.Seat) ([]models.ReservedSeat, error) {
@@ -107,4 +79,15 @@ func (r *reservationRepository) CancelSeats(ctx context.Context, seatIDs []uint)
 
 		return nil
 	})
+}
+
+func (r *reservationRepository) GetAllReservedSeats(ctx context.Context) ([]models.ReservedSeat, error) {
+	var reservedSeats []models.ReservedSeat
+
+	err := r.db.WithContext(ctx).Find(&reservedSeats).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return reservedSeats, nil
 }

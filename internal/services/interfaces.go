@@ -16,3 +16,7 @@ type ReservationService interface {
 	ReserveSeats(ctx context.Context, req *models.ReservationRequest) (*models.Reservation, error)
 	CancelSeats(ctx context.Context, req *models.CancelRequest) error
 }
+
+type AppService interface {
+	SyncReservationsToRedis() error
+}

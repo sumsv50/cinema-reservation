@@ -50,6 +50,12 @@ func main() {
 	// Initialize services
 	cinemaService := services.NewCinemaService(cinemaRepo, redis)
 	reservationService := services.NewReservationService(reservationRepo, cinemaRepo, redis)
+	appService := services.NewAppService(reservationRepo, redis)
+
+	err = appService.SyncReservationsToRedis()
+	if err != nil {
+		log.Fatal("Failed to sync reservations to Redis:", err)
+	}
 
 	// Initialize handlers
 	cinemaHandler := handlers.NewCinemaHandler(cinemaService)
