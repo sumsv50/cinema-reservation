@@ -1,0 +1,94 @@
+sequenceDiagram
+    participant Client
+    participant API as Server API
+    participant DB as Database (PostgreSQL)
+    participant Redis
+
+    %% App Start
+    Note over Client, Redis: Sync existing reservations from the database to Redis on application startup
+    API ->> DB: Fetch all reservations for all cinemas
+    DB -->> API: Return reservation details
+    API ->> Redis: Store reservations using Redis pipeline
+    alt Redis storage successful  
+        Redis -->> API: OK  
+        API ->> API: Proceed to start application  
+    else Redis storage failed  
+        Redis -->> API: ERROR  
+        API ->> API: Abort application startup  
+    end
+
+    %% Configure Cinema Layout
+    Note over Client, Redis: 1. Configure Cinema Layout
+    Client->>API: POST /cinema/layout
+    API->>DB: Check if cinema name exists
+    DB-->>API: Return existence status
+    alt Cinema doesn't exist
+        API->>DB: Create cinema record
+        DB-->>API: Cinema created
+        API-->>Client: Success response with cinema data
+    else Cinema exists
+        API-->>Client: Error: Cinema already exists
+    end
+
+    %% Query Available Seats
+    Note over Client, Redis: 2. Query Available Seats
+    Client->>API: GET /cinema/{slug}/available?number_of_seats=N
+    API->>DB: Get cinema by slug
+    DB-->>API: Cinema details
+    API->>Redis: Get reserved seats (HGETALL cinema:ID:seats)
+    Redis-->>API: Reserved seats data
+    API->>API: Build heatmap & find safe blocks
+    API-->>Client: Available seat blocks
+
+    %% Check Available Seats
+    Note over Client, Redis: 3. Check Available Seats
+    Client->>API: POST /cinema/{slug}/check (with seat list)
+    API->>DB: Get cinema by slug
+    DB-->>API: Cinema details
+    API->>Redis: Get reserved seats (HGETALL cinema:ID:seats)
+    Redis-->>API: Reserved seats data
+    API->>API: Build heatmap & check specific seats
+    API-->>Client: Available seats from requested list
+
+    %% Reserve Seats
+    Note over Client, Redis: 4. Reserve Seats
+    Client->>API: POST /reservations (with cinema_slug & seats)
+    API->>DB: Get cinema by slug
+    DB-->>API: Cinema details
+    API->>API: Validate seat positions
+    API->>Redis: Execute Lua script for atomic reservation
+    Note over Redis: Lua script checks:<br/>- Seats not already taken<br/>- Social distancing rules<br/>- Reserves seats if valid
+    alt Reservation successful in Redis
+        Redis-->>API: "OK"
+        API->>DB: Create reservation record
+        DB-->>API: Reservation created
+        API-->>Client: Success with reservation data
+    else Reservation failed in Redis
+        Redis-->>API: Error (seats taken/distance violation)
+        API-->>Client: Error response
+    else DB creation failed
+        Redis-->>API: "OK"
+        API->>DB: Create reservation record
+        DB-->>API: Error
+        API->>Redis: Execute cancel Lua script (rollback)
+        Redis-->>API: Seats cancelled
+        API-->>Client: Error response
+    end
+
+    %% Cancel Reservation
+    Note over Client, Redis: 5. Cancel Reservation
+    Client->>API: POST /reservations/cancel (with cinema_slug & seats)
+    API->>DB: Get cinema by slug
+    DB-->>API: Cinema details
+    API->>API: Validate seat positions
+    API->>DB: Find reserved seats to cancel
+    DB-->>API: Reserved seat records
+    alt All seats are reserved
+        API->>DB: Soft delete reservation records
+        DB-->>API: Seats cancelled in DB
+        API->>Redis: Execute cancel Lua script
+        Redis-->>API: Seats removed from Redis
+        API-->>Client: Success response
+    else Some seats not reserved
+        API-->>Client: Error: Seats not reserved
+    end
