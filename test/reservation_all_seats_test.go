@@ -11,11 +11,11 @@ import (
 
 func TestLoopingSeatRequestPattern(t *testing.T) {
 	const (
-		N          = 1000
-		rows       = 10
-		columns    = 15
-		targetURL  = "http://localhost:8080/api/v1/reservations"
-		cinemaSlug = "grand-cinema-downtown"
+		totalRequests = 1000
+		rows          = 10
+		columns       = 15
+		targetURL     = "http://localhost:8080/api/v1/reservations"
+		cinemaSlug    = "grand-cinema-downtown"
 	)
 
 	type SeatRequest struct {
@@ -44,9 +44,9 @@ func TestLoopingSeatRequestPattern(t *testing.T) {
 	seatMap := make(map[string]bool)
 
 	sent := 0
-	for sent < N {
-		for i := 0; i < rows && sent < N; i++ {
-			for j := 0; j <= columns && sent < N; j++ {
+	for sent < totalRequests {
+		for i := 0; i < rows && sent < totalRequests; i++ {
+			for j := 0; j <= columns && sent < totalRequests; j++ {
 				row, col := i, j
 				key := fmt.Sprintf("%d-%d", row, col)
 

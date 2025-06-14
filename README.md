@@ -154,13 +154,34 @@ The server will start on `localhost:8080` by default.
 
 
 ## Testing
-- Run all tests:
+
+### Prerequisites
+Before running tests, you must set up the test environment:
+
+1. Create a new cinema with minimum distance = 1
+2. Update test configuration in the code with the following parameters:
+    - `totalRequests`: Number of concurrent requests to simulate
+    - `slug`: Cinema identifier
+    - `rows`: Number of seat rows
+    - `columns`: Number of seat columns
+    - Additional cinema-specific parameters as needed
+
+*Note: You may need to remove the rate limit middleware from the Gin router before running the tests. (command row 92-93 in main.go)*
+
+### Running Tests
+- **Test multiple reservations for the same seat** <br/>
+  Ensures only the first reservation succeeds and the rest are marked as conflicts:
+  
   ```sh
-  go test ./test/...
+  go test -v ./test/reservation_same_seat_test.go
   ```
-- Includes:
-  - High-concurrency seat reservation tests.
-  - All-seats and same-seat edge case tests.
+
+- **Test reservations for all seats (including duplicates and valid cases)** <br/>
+  Ensures all seats are booked correctly, including duplicates and valid reservations:
+  
+  ```sh
+  go test -v ./test/reservation_all_seats_test.go
+  ```
 
 ---
 
