@@ -7,7 +7,7 @@ import (
 type Cinema struct {
 	ID          uint      `json:"id" gorm:"primaryKey"`
 	Name        string    `json:"name" gorm:"not null;unique"`
-	Slug        string    `json:"slug" gorm:"not null;unique"`
+	Slug        string    `json:"slug" gorm:"not null;unique;index"`
 	Rows        int       `json:"rows" gorm:"not null"`
 	Columns     int       `json:"columns" gorm:"not null"`
 	MinDistance int       `json:"min_distance" gorm:"not null"`

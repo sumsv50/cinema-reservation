@@ -12,7 +12,7 @@ type Reservation struct {
 	ID         uint           `json:"id" gorm:"primaryKey"`
 	CinemaID   uint           `json:"cinema_id" gorm:"not null"`
 	Note       string         `json:"note"`
-	ReservedAt time.Time      `json:"reserved_at"`
+	ReservedAt time.Time      `json:"reserved_at" gorm:"default:CURRENT_TIMESTAMP"`
 	Cinema     Cinema         `json:"-" gorm:"foreignKey:CinemaID"`
 	Seats      []ReservedSeat `json:"seats,omitempty" gorm:"foreignKey:ReservationID;constraint:OnDelete:CASCADE"`
 	DeletedAt  gorm.DeletedAt `json:"-"` // Soft delete

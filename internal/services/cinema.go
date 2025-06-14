@@ -144,6 +144,7 @@ func buildHeatmap(rows, cols, minDist int, reserved []string) [][]bool {
 		parts := strings.Split(seat, ":")
 		r, _ := strconv.Atoi(parts[0])
 		c, _ := strconv.Atoi(parts[1])
+		heat[r][c] = true // reserved
 
 		for dr := -minDist; dr <= minDist; dr++ {
 			for dc := -minDist; dc <= minDist; dc++ {
