@@ -10,7 +10,7 @@ import (
 
 func TestConcurrentSeatReservation(t *testing.T) {
 	const (
-		totalRequests = 7000
+		totalRequests = 10000
 		targetURL     = "http://localhost:8080/api/v1/reservations"
 		cinemaSlug    = "grand-cinema-downtown"
 		row           = 0
@@ -35,12 +35,12 @@ func TestConcurrentSeatReservation(t *testing.T) {
 	)
 
 	client := &http.Client{}
-
+	fire := make(chan struct{})
 	for i := 0; i < totalRequests; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-
+			<-fire
 			resp, err := client.Post(targetURL, "application/json", bytes.NewBuffer(payload))
 			if err != nil {
 				mu.Lock()
@@ -57,6 +57,7 @@ func TestConcurrentSeatReservation(t *testing.T) {
 		}()
 	}
 
+	close(fire)
 	wg.Wait()
 
 	t.Logf("HTTP Response Summary:")

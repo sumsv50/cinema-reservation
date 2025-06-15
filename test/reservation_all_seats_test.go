@@ -11,7 +11,7 @@ import (
 
 func TestLoopingSeatRequestPattern(t *testing.T) {
 	const (
-		totalRequests = 1000
+		totalRequests = 10000
 		rows          = 10
 		columns       = 15
 		targetURL     = "http://localhost:8080/api/v1/reservations"
@@ -44,6 +44,7 @@ func TestLoopingSeatRequestPattern(t *testing.T) {
 	seatMap := make(map[string]bool)
 
 	sent := 0
+	fire := make(chan struct{})
 	for sent < totalRequests {
 		for i := 0; i < rows && sent < totalRequests; i++ {
 			for j := 0; j <= columns && sent < totalRequests; j++ {
@@ -71,6 +72,7 @@ func TestLoopingSeatRequestPattern(t *testing.T) {
 				go func(r ReservationRequest) {
 					defer wg.Done()
 					body, _ := json.Marshal(r)
+					<-fire
 					resp, err := client.Post(targetURL, "application/json", bytes.NewBuffer(body))
 					if err != nil {
 
@@ -92,6 +94,7 @@ func TestLoopingSeatRequestPattern(t *testing.T) {
 		}
 	}
 
+	close(fire)
 	wg.Wait()
 
 	// --- Report actual vs. expected
