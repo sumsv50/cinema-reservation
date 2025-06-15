@@ -3,14 +3,13 @@
 A high-concurrency cinema seat reservation system with social distancing, built with Go, Gin, PostgreSQL, and Redis.
 
 ## Table of Contents
-- [Features](#features)
+- [Introduction](#introduction)
+- [Solution](#solution)
 - [Setup Instructions](#setup-instructions)
 - [API Documentation](#api-documentation)
-- [Assumptions and Design Decisions](#assumptions-and-design-decisions)
 - [Testing](#testing)
-- [Environment Variables](#environment-variables)
 - [Project Structure](#project-structure)
-- [License](#license)
+- [Future Improvements](#future-improvements)
 
 ---
 
@@ -28,7 +27,7 @@ Main features:
 
 ---
 
-## 💡 Solution
+## Solution
 
 Offloads the critical, concurrent-sensitive seat check to Redis for speed and atomicity. Redis stores seat reservations per cinema screen using a 2D layout as a hash.
 
@@ -44,7 +43,7 @@ Go backend:
 - Respond to clients
 - Logging, rate limiting
 
-📊 View Sequence Diagram: [Authentication Sequence Diagram](./sequenceDiagram.mmd)
+📊 View Sequence Diagram: [Sequence Diagram](./sequenceDiagram.mmd)
 
 >Redis is the gatekeeper — it enforces safety. <br>
 Go app is the orchestrator — it handles flow, persistence, and responses.
@@ -204,3 +203,8 @@ The system handled 10,000 concurrent requests successfully when tested on my loc
 - `internal/utils/` — Utilities and error handling
 - `test/` — Integration and concurrency tests
 
+## Future Improvements
+If a reservation cancellation has already been processed in the database but fails to cancel in Redis, a mechanism is needed to retry and synchronize data from the database back to Redis:
+
+- Implement background jobs to automatically retry the cancellation in Redis.
+- If all retry attempts fail, notify the admin so they can either retry manually or trigger a manual sync from the database to Redis.
