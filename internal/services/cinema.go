@@ -146,14 +146,30 @@ func buildHeatmap(rows, cols, minDist int, reserved []string) [][]bool {
 		c, _ := strconv.Atoi(parts[1])
 		heat[r][c] = true // reserved
 
-		for dr := -minDist; dr <= minDist; dr++ {
-			for dc := -minDist; dc <= minDist; dc++ {
-				nr := r + dr
-				nc := c + dc
-				if nr >= 0 && nr < rows && nc >= 0 && nc < cols {
-					if abs(dr)+abs(dc) < minDist {
-						heat[nr][nc] = true // unsafe
-					}
+		rTop := r - minDist + 1
+		if rTop < 0 {
+			rTop = 0
+		}
+		rBottom := r + minDist - 1
+		if rBottom >= rows {
+			rBottom = rows - 1
+		}
+		cLeft := c - minDist + 1
+		if cLeft < 0 {
+			cLeft = 0
+		}
+		cRight := c + minDist - 1
+		if cRight >= cols {
+			cRight = cols - 1
+		}
+
+		for nr := rTop; nr <= rBottom; nr++ {
+			for nc := cLeft; nc <= cRight; nc++ {
+				if heat[nr][nc] {
+					continue
+				}
+				if abs(nr-r)+abs(nc-c) < minDist {
+					heat[nr][nc] = true // unsafe
 				}
 			}
 		}
